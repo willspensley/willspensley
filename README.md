@@ -1,6 +1,6 @@
 # Will Spensley
 
-### Spent a decade in the automotive industry developing products and manufacturing systems from initial design through to full-scale production.
+### Spent a decade in the automotive industry developing products and manufacturing systems from initial design through to full-scale production. Linkedin [HERE](https://www.linkedin.com/in/will-spensley-a59767158/)
 
 ### I have a BEng in Mechanical Engineering and have just recently completed a MSc at Imperial College London
 
