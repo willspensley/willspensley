@@ -1,6 +1,6 @@
 # Will Spensley
 
-### Spent a decade in the automotive industry developing products and manufacturing systems from initial design through to full-scale production. Linkedin [HERE](https://www.linkedin.com/in/will-spensley-a59767158/)
+### Spent a decade in the automotive industry developing products and autonomous manufacturing systems from concept through to full-scale production. Linkedin [HERE](https://www.linkedin.com/in/will-spensley-a59767158/)
 
 ### I'm now in the rail industry developing autonomous control systems, see [HERE](https://github.com/willspensley/Rail-Autonomy) 
 
