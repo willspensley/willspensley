@@ -2,9 +2,9 @@
 
 ### Spent a decade in the automotive industry developing products and manufacturing systems from initial design through to full-scale production. Linkedin [HERE](https://www.linkedin.com/in/will-spensley-a59767158/)
 
-### BEng in Mechanical Engineering at Oxford Brookes + MSc in Cleantech Innovation at Imperial College London
-
 ### I'm now in the rail industry developing autonomous control systems, see [HERE](https://github.com/willspensley/Rail-Autonomy) 
+
+### BEng in Mechanical Engineering at Oxford Brookes + MSc in Cleantech Innovation at Imperial College London
 
 <!--
 **willspensley/willspensley** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
