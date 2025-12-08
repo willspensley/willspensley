@@ -2,7 +2,7 @@
 
 ### Spent a decade in the automotive industry developing products and manufacturing systems from initial design through to full-scale production. Linkedin [HERE](https://www.linkedin.com/in/will-spensley-a59767158/)
 
-### I have a BEng in Mechanical Engineering and have just recently completed a MSc at Imperial College London
+### BEng in Mechanical Engineering at Oxford Brookes + MSc in Cleantech Innovation at Imperial College London
 
 ### I'm now in the rail industry developing autonomous control systems, see [HERE](https://github.com/willspensley/Rail-Autonomy) 
 
