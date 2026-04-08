@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>West Midlands Metro</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #1a1a2e; font-family: Arial, sans-serif; }
+    #map { width: 100%; height: 100%; }
+
+    /* Overlay */
+    #overlay {
+      position: absolute; top: 16px; left: 16px; z-index: 1000;
+      background: rgba(0,0,0,0.75); color: #fff;
+      padding: 16px 20px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(8px);
+      min-width: 200px; pointer-events: none;
+    }
+    #overlay h1 { font-size: 17px; font-weight: bold; margin-bottom: 3px; }
+    #overlay .sub { font-size: 11px; color: #888; margin-bottom: 12px; }
+    #overlay .stat { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 5px; }
+    #overlay .dot { width: 10px; height: 10px; border-radius: 50%; background: #00a0dc; }
+    #overlay .updated { font-size: 11px; color: #888; }
+    #overlay .sim-badge {
+      margin-top: 8px; padding: 4px 8px;
+      background: rgba(255,184,0,0.15); border: 1px solid rgba(255,184,0,0.4);
+      border-radius: 4px; font-size: 10px; color: #ffb800;
+      font-weight: bold; letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    /* Legend */
+    #legend {
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; background: rgba(0,0,0,0.75); color: #fff;
+      padding: 8px 18px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex; gap: 18px; align-items: center;
+      font-size: 12px; pointer-events: none;
+    }
+    #legend .item { display: flex; align-items: center; gap: 6px; }
+    .leg-route { width: 16px; height: 3px; background: #ffb800; border-radius: 2px; }
+    .leg-stop { width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+    .leg-tram { width: 12px; height: 12px; border-radius: 50%; background: #00a0dc; border: 2px solid #fff; }
+
+    /* Leaflet overrides */
+    .leaflet-container { background: #1a1a2e; }
+    .tram-marker {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #00a0dc; border: 3px solid #fff;
+      box-shadow: 0 0 8px rgba(0,160,220,0.6);
+      transition: transform 0.1s;
+    }
+    .stop-marker {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #fff; border: 2px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="overlay">
+  <h1>West Midlands Metro</h1>
+  <div class="sub">Simulation Mode</div>
+  <div class="stat">
+    <div class="dot"></div>
+    <span><span id="tram-count">6</span> trams running</span>
+  </div>
+  <div class="updated" id="clock">--:--:--</div>
+  <div class="sim-badge">Simulated</div>
+</div>
+
+<div id="legend">
+  <div class="item"><div class="leg-route"></div><span>Route</span></div>
+  <div class="item"><div class="leg-stop"></div><span>Stop</span></div>
+  <div class="item"><div class="leg-tram"></div><span>Tram</span></div>
+</div>
+
+<script>
+// ─── Stop data (route order: Edgbaston Village → Wolverhampton St George's) ───
+const STOPS = [
+  { name: "Edgbaston Village",            lat: 52.4683, lon: -1.9204 },
+  { name: "Five Ways",                    lat: 52.4733, lon: -1.9117 },
+  { name: "Brindleyplace",               lat: 52.4799, lon: -1.9103 },
+  { name: "Library",                     lat: 52.4800, lon: -1.9040 },
+  { name: "Town Hall",                   lat: 52.4806, lon: -1.9022 },
+  { name: "Grand Central",              lat: 52.4773, lon: -1.9003 },
+  { name: "Corporation Street",          lat: 52.4813, lon: -1.8970 },
+  { name: "Bull Street",                 lat: 52.4817, lon: -1.8945 },
+  { name: "St Chads",                    lat: 52.4847, lon: -1.8933 },
+  { name: "St Paul's",                   lat: 52.4861, lon: -1.9000 },
+  { name: "Jewellery Quarter",           lat: 52.4891, lon: -1.9050 },
+  { name: "Soho Benson Road",            lat: 52.4975, lon: -1.9258 },
+  { name: "Winson Green",               lat: 52.5010, lon: -1.9275 },
+  { name: "Handsworth Booth Street",     lat: 52.5060, lon: -1.9480 },
+  { name: "The Hawthorns",              lat: 52.5098, lon: -1.9655 },
+  { name: "Kenrick Park",               lat: 52.5146, lon: -1.9835 },
+  { name: "Trinity Way",                lat: 52.5148, lon: -1.9975 },
+  { name: "West Bromwich Central",       lat: 52.5148, lon: -2.0125 },
+  { name: "Lodge Road",                  lat: 52.5172, lon: -2.0265 },
+  { name: "Dartmouth Street",            lat: 52.5254, lon: -2.0187 },
+  { name: "Dudley Street Guns Village",  lat: 52.5290, lon: -2.0140 },
+  { name: "Black Lake",                  lat: 52.5334, lon: -2.0140 },
+  { name: "Wednesbury Great Western Street", lat: 52.5510, lon: -2.0190 },
+  { name: "Wednesbury Parkway",          lat: 52.5530, lon: -2.0280 },
+  { name: "Bradley Lane",               lat: 52.5571, lon: -2.0458 },
+  { name: "Loxdale",                    lat: 52.5592, lon: -2.0601 },
+  { name: "Bilston Central",            lat: 52.5636, lon: -2.0734 },
+  { name: "The Crescent",               lat: 52.5688, lon: -2.0915 },
+  { name: "Priestfield",               lat: 52.5720, lon: -2.1052 },
+  { name: "The Royal",                  lat: 52.5753, lon: -2.1185 },
+  { name: "Pipers Row",                 lat: 52.5820, lon: -2.1272 },
+  { name: "Wolverhampton Station",      lat: 52.5885, lon: -2.1322 },
+  { name: "Wolverhampton St George's",  lat: 52.5916, lon: -2.1278 },
+];
+
+// ─── Pre-compute cumulative distances along route ─────────────────────────────
+function haversine(a, b) {
+  const R = 6371000;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLon = (b.lon - a.lon) * Math.PI / 180;
+  const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+}
+
+const segDists = [];   // distance of each segment
+let cumDist = [0];    // cumulative distance at each stop
+for (let i = 1; i < STOPS.length; i++) {
+  const d = haversine(STOPS[i-1], STOPS[i]);
+  segDists.push(d);
+  cumDist.push(cumDist[i-1] + d);
+}
+const totalDist = cumDist[cumDist.length - 1];
+
+// Interpolate lat/lon at distance `d` along route
+function posAtDist(d) {
+  d = Math.max(0, Math.min(totalDist, d));
+  for (let i = 1; i < STOPS.length; i++) {
+    if (cumDist[i] >= d) {
+      const t = (d - cumDist[i-1]) / segDists[i-1];
+      return {
+        lat: STOPS[i-1].lat + t * (STOPS[i].lat - STOPS[i-1].lat),
+        lon: STOPS[i-1].lon + t * (STOPS[i].lon - STOPS[i-1].lon),
+      };
+    }
+  }
+  return { lat: STOPS[STOPS.length-1].lat, lon: STOPS[STOPS.length-1].lon };
+}
+
+// Nearest stop name at distance d
+function nearestStop(d) {
+  let closest = 0, best = Infinity;
+  for (let i = 0; i < cumDist.length; i++) {
+    const diff = Math.abs(cumDist[i] - d);
+    if (diff < best) { best = diff; closest = i; }
+  }
+  return STOPS[closest].name;
+}
+
+// ─── Map initialisation ───────────────────────────────────────────────────────
+const MAPTILER_KEY = 'FXaZMCVlJ0FwgtPRY0Hp';
+
+const map = L.map('map', {
+  center: [52.53, -2.01],
+  zoom: 11,
+  zoomControl: true,
+  attributionControl: true,
+});
+
+L.tileLayer(
+  `https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+  {
+    tileSize: 256,
+    attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; OpenStreetMap contributors',
+    maxZoom: 18,
+  }
+).addTo(map);
+
+// ─── Draw route polyline ──────────────────────────────────────────────────────
+L.polyline(STOPS.map(s => [s.lat, s.lon]), {
+  color: '#ffb800',
+  weight: 4,
+  opacity: 0.9,
+  lineJoin: 'round',
+  lineCap: 'round',
+}).addTo(map);
+
+// ─── Draw stop markers ────────────────────────────────────────────────────────
+STOPS.forEach(stop => {
+  const icon = L.divIcon({
+    className: '',
+    html: '<div class="stop-marker"></div>',
+    iconSize: [10, 10],
+    iconAnchor: [5, 5],
+  });
+  L.marker([stop.lat, stop.lon], { icon })
+    .bindTooltip(stop.name, { direction: 'top', offset: [0, -8], opacity: 0.9 })
+    .addTo(map);
+});
+
+// ─── Tram simulation ──────────────────────────────────────────────────────────
+const TRAM_SPEED = 15; // m/s ≈ 54 km/h (tram average with stops)
+const NUM_TRAMS = 6;
+
+const trams = Array.from({ length: NUM_TRAMS }, (_, i) => ({
+  dist: (totalDist / NUM_TRAMS) * i,
+  dir: i % 2 === 0 ? 1 : -1,  // alternate directions for realism
+  marker: null,
+}));
+
+// Create tram markers
+const tramIcon = L.divIcon({
+  className: '',
+  html: '<div class="tram-marker"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+trams.forEach(tram => {
+  const pos = posAtDist(tram.dist);
+  tram.marker = L.marker([pos.lat, pos.lon], {
+    icon: tramIcon,
+    zIndexOffset: 1000,
+  })
+    .bindTooltip('', { direction: 'top', offset: [0, -12], opacity: 0.9 })
+    .addTo(map);
+});
+
+// ─── Animation loop ───────────────────────────────────────────────────────────
+let lastTime = null;
+
+function animate(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.1); // seconds, capped at 100ms
+  lastTime = timestamp;
+
+  trams.forEach((tram, i) => {
+    tram.dist += tram.dir * TRAM_SPEED * dt;
+
+    // Bounce at ends
+    if (tram.dist >= totalDist) { tram.dist = totalDist; tram.dir = -1; }
+    if (tram.dist <= 0)          { tram.dist = 0;          tram.dir = 1; }
+
+    const pos = posAtDist(tram.dist);
+    tram.marker.setLatLng([pos.lat, pos.lon]);
+    const next = nearestStop(tram.dist + tram.dir * 300);
+    tram.marker.setTooltipContent(`Tram ${i + 1} → ${next}`);
+  });
+
+  // Update clock
+  document.getElementById('clock').textContent =
+    'Updated: ' + new Date().toLocaleTimeString();
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
