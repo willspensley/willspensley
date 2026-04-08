@@ -82,41 +82,49 @@
 </div>
 
 <script>
-// ─── Stop data (route order: Edgbaston Village → Wolverhampton St George's) ───
+// ─── Stop data from TfWM API (real coordinates) ──────────────────────────────
+// Main line: Edgbaston Village → Wolverhampton Station
 const STOPS = [
-  { name: "Edgbaston Village",            lat: 52.4683, lon: -1.9204 },
-  { name: "Five Ways",                    lat: 52.4733, lon: -1.9117 },
-  { name: "Brindleyplace",               lat: 52.4799, lon: -1.9103 },
-  { name: "Library",                     lat: 52.4800, lon: -1.9040 },
-  { name: "Town Hall",                   lat: 52.4806, lon: -1.9022 },
-  { name: "Grand Central",              lat: 52.4773, lon: -1.9003 },
-  { name: "Corporation Street",          lat: 52.4813, lon: -1.8970 },
-  { name: "Bull Street",                 lat: 52.4817, lon: -1.8945 },
-  { name: "St Chads",                    lat: 52.4847, lon: -1.8933 },
-  { name: "St Paul's",                   lat: 52.4861, lon: -1.9000 },
-  { name: "Jewellery Quarter",           lat: 52.4891, lon: -1.9050 },
-  { name: "Soho Benson Road",            lat: 52.4975, lon: -1.9258 },
-  { name: "Winson Green",               lat: 52.5010, lon: -1.9275 },
-  { name: "Handsworth Booth Street",     lat: 52.5060, lon: -1.9480 },
-  { name: "The Hawthorns",              lat: 52.5098, lon: -1.9655 },
-  { name: "Kenrick Park",               lat: 52.5146, lon: -1.9835 },
-  { name: "Trinity Way",                lat: 52.5148, lon: -1.9975 },
-  { name: "West Bromwich Central",       lat: 52.5148, lon: -2.0125 },
-  { name: "Lodge Road",                  lat: 52.5172, lon: -2.0265 },
-  { name: "Dartmouth Street",            lat: 52.5254, lon: -2.0187 },
-  { name: "Dudley Street Guns Village",  lat: 52.5290, lon: -2.0140 },
-  { name: "Black Lake",                  lat: 52.5334, lon: -2.0140 },
-  { name: "Wednesbury Great Western Street", lat: 52.5510, lon: -2.0190 },
-  { name: "Wednesbury Parkway",          lat: 52.5530, lon: -2.0280 },
-  { name: "Bradley Lane",               lat: 52.5571, lon: -2.0458 },
-  { name: "Loxdale",                    lat: 52.5592, lon: -2.0601 },
-  { name: "Bilston Central",            lat: 52.5636, lon: -2.0734 },
-  { name: "The Crescent",               lat: 52.5688, lon: -2.0915 },
-  { name: "Priestfield",               lat: 52.5720, lon: -2.1052 },
-  { name: "The Royal",                  lat: 52.5753, lon: -2.1185 },
-  { name: "Pipers Row",                 lat: 52.5820, lon: -2.1272 },
-  { name: "Wolverhampton Station",      lat: 52.5885, lon: -2.1322 },
-  { name: "Wolverhampton St George's",  lat: 52.5916, lon: -2.1278 },
+  { name: "Edgbaston Village",            lat: 52.47204, lon: -1.92355 },
+  { name: "Five Ways",                    lat: 52.47474, lon: -1.91524 },
+  { name: "Brindleyplace",               lat: 52.47672, lon: -1.91225 },
+  { name: "Centenary Square",            lat: 52.47878, lon: -1.90824 },
+  { name: "Town Hall",                   lat: 52.47926, lon: -1.90333 },
+  { name: "Grand Central",              lat: 52.47858, lon: -1.89912 },
+  { name: "Corporation Street",          lat: 52.47998, lon: -1.89705 },
+  { name: "Bull Street",                 lat: 52.48190, lon: -1.89630 },
+  { name: "St Chad's",                   lat: 52.48475, lon: -1.90058 },
+  { name: "St Paul's",                   lat: 52.48722, lon: -1.90466 },
+  { name: "Jewellery Quarter",           lat: 52.48989, lon: -1.91424 },
+  { name: "Soho Benson Road",            lat: 52.49705, lon: -1.93090 },
+  { name: "Winson Green",               lat: 52.49891, lon: -1.93920 },
+  { name: "Handsworth Booth Street",     lat: 52.50210, lon: -1.95235 },
+  { name: "The Hawthorns",              lat: 52.50582, lon: -1.96514 },
+  { name: "Kenrick Park",               lat: 52.50870, lon: -1.98256 },
+  { name: "Trinity Way",                lat: 52.51191, lon: -1.98830 },
+  { name: "West Bromwich Central",       lat: 52.51656, lon: -1.99459 },
+  { name: "Lodge Road",                  lat: 52.51868, lon: -1.99999 },
+  { name: "Dartmouth Street",            lat: 52.52048, lon: -2.00440 },
+  { name: "Dudley Street Guns Village",  lat: 52.52514, lon: -2.00846 },
+  { name: "Black Lake",                  lat: 52.53102, lon: -2.01123 },
+  { name: "Wednesbury Central",          lat: 52.54898, lon: -2.02557 },
+  { name: "Wednesbury Parkway",          lat: 52.54974, lon: -2.03191 },
+  { name: "Bradley Lane",               lat: 52.55609, lon: -2.05787 },
+  { name: "Loxdale",                    lat: 52.56011, lon: -2.06583 },
+  { name: "Bilston Central",            lat: 52.56528, lon: -2.07461 },
+  { name: "The Crescent",               lat: 52.56796, lon: -2.08095 },
+  { name: "Priestfield",               lat: 52.57193, lon: -2.09786 },
+  { name: "The Royal",                  lat: 52.58113, lon: -2.11723 },
+  { name: "Pipers Row",                 lat: 52.58525, lon: -2.12274 },
+  { name: "Wolverhampton St George's",  lat: 52.58405, lon: -2.12449 },
+  { name: "Wolverhampton Station",      lat: 52.58725, lon: -2.11956 },
+];
+
+// Eastside extension branch (from Bull Street)
+const EASTSIDE_STOPS = [
+  { name: "Bull Street",                 lat: 52.48190, lon: -1.89630 },
+  { name: "Albert Street",              lat: 52.48043, lon: -1.89249 },
+  { name: "Millennium Point",           lat: 52.48087, lon: -1.89005 },
 ];
 
 // ─── Pre-compute cumulative distances along route ─────────────────────────────
@@ -181,17 +189,14 @@ L.tileLayer(
   }
 ).addTo(map);
 
-// ─── Draw route polyline ──────────────────────────────────────────────────────
-L.polyline(STOPS.map(s => [s.lat, s.lon]), {
-  color: '#ffb800',
-  weight: 4,
-  opacity: 0.9,
-  lineJoin: 'round',
-  lineCap: 'round',
-}).addTo(map);
+// ─── Draw route polylines ─────────────────────────────────────────────────────
+const routeStyle = { color: '#ffb800', weight: 4, opacity: 0.9, lineJoin: 'round', lineCap: 'round' };
+L.polyline(STOPS.map(s => [s.lat, s.lon]), routeStyle).addTo(map);
+L.polyline(EASTSIDE_STOPS.map(s => [s.lat, s.lon]), routeStyle).addTo(map);
 
 // ─── Draw stop markers ────────────────────────────────────────────────────────
-STOPS.forEach(stop => {
+const allStops = [...STOPS, ...EASTSIDE_STOPS.slice(1)]; // skip Bull Street duplicate
+allStops.forEach(stop => {
   const icon = L.divIcon({
     className: '',
     html: '<div class="stop-marker"></div>',
