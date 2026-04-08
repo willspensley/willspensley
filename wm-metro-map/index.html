@@ -46,18 +46,89 @@
     .leg-stop { width: 10px; height: 10px; border-radius: 50%; background: #fff; }
     .leg-tram { width: 12px; height: 12px; border-radius: 50%; background: #00a0dc; border: 2px solid #fff; }
 
+    /* Stop panel */
+    #stop-panel {
+      position: absolute; top: 0; right: -340px; z-index: 1001;
+      width: 320px; height: 100%; background: rgba(10,10,30,0.92);
+      border-left: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px); color: #fff;
+      transition: right 0.3s ease; overflow-y: auto;
+      font-size: 13px;
+    }
+    #stop-panel.open { right: 0; }
+    #stop-panel .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    #stop-panel .panel-header h2 { font-size: 16px; font-weight: 600; margin: 0; }
+    #stop-panel .close-btn {
+      background: none; border: none; color: #888; font-size: 22px;
+      cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+    #stop-panel .close-btn:hover { color: #fff; }
+    #stop-panel .panel-body { padding: 12px 16px; }
+    #stop-panel .arrival-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    #stop-panel .arrival-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #00a0dc; flex-shrink: 0;
+    }
+    #stop-panel .arrival-info { flex: 1; }
+    #stop-panel .arrival-dest { font-weight: 500; }
+    #stop-panel .arrival-sub { font-size: 11px; color: #888; margin-top: 2px; }
+    #stop-panel .arrival-eta {
+      font-size: 15px; font-weight: 700; color: #ffb800;
+      white-space: nowrap;
+    }
+    #stop-panel .no-arrivals { color: #666; padding: 20px 0; text-align: center; }
+    #stop-panel .section-label {
+      font-size: 10px; color: #666; text-transform: uppercase;
+      letter-spacing: 1px; margin: 14px 0 8px; font-weight: 600;
+    }
+
     /* Leaflet overrides */
     .leaflet-container { background: #1a1a2e; }
-    .tram-marker {
-      width: 16px; height: 16px; border-radius: 50%;
-      background: #00a0dc; border: 3px solid #fff;
-      box-shadow: 0 0 8px rgba(0,160,220,0.6);
-      transition: transform 0.1s;
+    .tram-marker-wrap {
+      width: 28px; height: 28px; position: relative;
+    }
+    .tram-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #00a0dc; border: 2.5px solid #fff;
+      box-shadow: 0 0 10px rgba(0,160,220,0.6);
+      position: absolute; top: 7px; left: 7px;
+    }
+    .tram-arrow {
+      position: absolute; top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 7px solid #fff;
+      filter: drop-shadow(0 0 2px rgba(0,160,220,0.5));
     }
     .stop-marker {
       width: 10px; height: 10px; border-radius: 50%;
       background: #fff; border: 2px solid #ccc;
+      cursor: pointer;
     }
+    .stop-marker:hover {
+      background: #ffb800; border-color: #ffb800;
+      box-shadow: 0 0 8px rgba(255,184,0,0.5);
+    }
+
+    /* Tram popup */
+    .tram-popup .leaflet-popup-content-wrapper {
+      background: rgba(10,10,30,0.92); color: #fff;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      backdrop-filter: blur(8px);
+    }
+    .tram-popup .leaflet-popup-tip { background: rgba(10,10,30,0.92); }
+    .tram-popup .leaflet-popup-content { margin: 10px 14px; font-size: 13px; }
+    .tram-popup .popup-dest { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .tram-popup .popup-row { color: #aaa; font-size: 12px; margin: 2px 0; }
+    .tram-popup .popup-row span { color: #fff; }
   </style>
 </head>
 <body>
@@ -73,6 +144,14 @@
   </div>
   <div class="updated" id="clock">--:--:--</div>
   <div class="sim-badge" id="sim-badge" style="display:none">Simulated</div>
+</div>
+
+<div id="stop-panel">
+  <div class="panel-header">
+    <h2 id="panel-stop-name">Stop Name</h2>
+    <button class="close-btn" onclick="closeStopPanel()">&times;</button>
+  </div>
+  <div class="panel-body" id="panel-body"></div>
 </div>
 
 <div id="legend">
@@ -196,6 +275,7 @@ L.polyline(EASTSIDE_STOPS.map(s => [s.lat, s.lon]), routeStyle).addTo(map);
 
 // ─── Draw stop markers ────────────────────────────────────────────────────────
 const allStops = [...STOPS, ...EASTSIDE_STOPS.slice(1)]; // skip Bull Street duplicate
+const stopMarkers = [];
 allStops.forEach(stop => {
   const icon = L.divIcon({
     className: '',
@@ -203,9 +283,11 @@ allStops.forEach(stop => {
     iconSize: [10, 10],
     iconAnchor: [5, 5],
   });
-  L.marker([stop.lat, stop.lon], { icon })
+  const m = L.marker([stop.lat, stop.lon], { icon })
     .bindTooltip(stop.name, { direction: 'top', offset: [0, -8], opacity: 0.9 })
     .addTo(map);
+  m.on('click', () => openStopPanel(stop.name));
+  stopMarkers.push(m);
 });
 
 // ─── Stop name lookup ─────────────────────────────────────────────────────────
@@ -283,23 +365,40 @@ async function fetchLiveData() {
 // ─── Tram state: smooth interpolation for both live and sim ──────────────────
 const tramIcon = L.divIcon({
   className: '',
-  html: '<div class="tram-marker"></div>',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
+  html: '<div class="tram-marker-wrap"><div class="tram-arrow"></div><div class="tram-dot"></div></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
 });
 
+// Bearing between two points in degrees (0 = north, 90 = east)
+function calcBearing(lat1, lon1, lat2, lon2) {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const la1 = lat1 * Math.PI / 180, la2 = lat2 * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(la2);
+  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
 // Each tram has: current display pos, target pos, marker, metadata
-let tramState = []; // [{ lat, lon, targetLat, targetLon, towards, nextStop, marker }]
+let tramState = [];
 
 function ensureMarkers(count) {
-  // Add markers if we need more
   while (tramState.length < count) {
-    const m = L.marker([0, 0], { icon: tramIcon, zIndexOffset: 1000 })
-      .bindTooltip('', { direction: 'top', offset: [0, -12], opacity: 0.9 })
-      .addTo(map);
-    tramState.push({ lat: 0, lon: 0, targetLat: 0, targetLon: 0, towards: '', nextStop: '', marker: m });
+    const m = L.marker([0, 0], { icon: tramIcon, zIndexOffset: 1000 }).addTo(map);
+    m.on('click', function() {
+      const idx = tramState.findIndex(t => t.marker === m);
+      if (idx === -1) return;
+      const t = tramState[idx];
+      const popupHtml = `<div class="popup-dest">→ ${t.towards}</div>
+        <div class="popup-row">Next stop: <span>${t.nextStop}</span></div>
+        <div class="popup-row">Status: <span>${isLive ? 'Live tracked' : 'Simulated'}</span></div>`;
+      L.popup({ className: 'tram-popup', offset: [0, -8] })
+        .setLatLng([t.lat, t.lon])
+        .setContent(popupHtml)
+        .openOn(map);
+    });
+    tramState.push({ lat: 0, lon: 0, targetLat: 0, targetLon: 0, bearing: 0, towards: '', nextStop: '', marker: m });
   }
-  // Remove excess markers
   while (tramState.length > count) {
     const t = tramState.pop();
     map.removeLayer(t.marker);
@@ -352,10 +451,23 @@ function setTargets(tramData) {
 // Smoothly move displayed positions toward targets each frame
 function lerpMarkers(speed) {
   tramState.forEach(t => {
+    const prevLat = t.lat, prevLon = t.lon;
     t.lat += (t.targetLat - t.lat) * speed;
     t.lon += (t.targetLon - t.lon) * speed;
     t.marker.setLatLng([t.lat, t.lon]);
-    t.marker.setTooltipContent(`→ ${t.nextStop}`);
+
+    // Update bearing if tram has moved enough
+    const dLat = t.lat - prevLat, dLon = t.lon - prevLon;
+    if (Math.abs(dLat) > 1e-7 || Math.abs(dLon) > 1e-7) {
+      t.bearing = calcBearing(prevLat, prevLon, t.lat, t.lon);
+    }
+
+    // Rotate the marker element
+    const el = t.marker.getElement();
+    if (el) {
+      const wrap = el.querySelector('.tram-marker-wrap');
+      if (wrap) wrap.style.transform = `rotate(${t.bearing}deg)`;
+    }
   });
   document.getElementById('clock').textContent = 'Updated: ' + new Date().toLocaleTimeString();
 }
@@ -404,6 +516,80 @@ async function pollLive() {
     document.getElementById('sim-badge').style.display = '';
   }
 }
+
+// ─── Stop panel logic ────────────────────────────────────────────────────────
+let selectedStop = null;
+
+function openStopPanel(stopName) {
+  selectedStop = stopName;
+  document.getElementById('panel-stop-name').textContent = stopName;
+  updateStopPanel();
+  document.getElementById('stop-panel').classList.add('open');
+}
+
+function closeStopPanel() {
+  selectedStop = null;
+  document.getElementById('stop-panel').classList.remove('open');
+}
+
+function updateStopPanel() {
+  if (!selectedStop) return;
+  const stopIdx = stopNameToIndex[selectedStop];
+  if (stopIdx === undefined) return;
+  const stopDist = cumDist[stopIdx];
+  const body = document.getElementById('panel-body');
+
+  // Compute approaching trams with ETAs
+  const arrivals = [];
+
+  if (!isLive) {
+    // Simulation mode: compute from simTram distances
+    simTrams.forEach((tram, i) => {
+      const dest = tram.dir > 0 ? 'Wolverhampton' : 'Edgbaston Village';
+      const distToStop = tram.dir > 0 ? stopDist - tram.dist : tram.dist - stopDist;
+      if (distToStop > 0 && distToStop < 15000) {
+        const etaSec = distToStop / TRAM_SPEED;
+        arrivals.push({ dest, eta: etaSec, id: `sim-${i}` });
+      }
+    });
+  } else {
+    // Live mode: use tramState metadata
+    tramState.forEach(t => {
+      if (t.nextStop === selectedStop || t.towards) {
+        // Rough ETA from distance between tram and stop
+        const d = haversine({ lat: t.lat, lon: t.lon }, STOPS[stopIdx]);
+        if (d < 15000) {
+          arrivals.push({ dest: t.towards, eta: d / 12, id: '' });
+        }
+      }
+    });
+  }
+
+  arrivals.sort((a, b) => a.eta - b.eta);
+
+  let html = '<div class="section-label">Upcoming trams</div>';
+  if (arrivals.length === 0) {
+    html += '<div class="no-arrivals">No trams approaching</div>';
+  } else {
+    arrivals.forEach(a => {
+      const mins = Math.round(a.eta / 60);
+      const etaText = mins < 1 ? 'Due' : `${mins} min`;
+      html += `<div class="arrival-row">
+        <div class="arrival-dot"></div>
+        <div class="arrival-info">
+          <div class="arrival-dest">→ ${a.dest}</div>
+          <div class="arrival-sub">${selectedStop}</div>
+        </div>
+        <div class="arrival-eta">${etaText}</div>
+      </div>`;
+    });
+  }
+
+  body.innerHTML = html;
+}
+
+// Refresh stop panel every second
+setInterval(updateStopPanel, 1000);
 
 // ─── Main animation loop (60fps) ─────────────────────────────────────────────
 let lastFrameTime = null;
