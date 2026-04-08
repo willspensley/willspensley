@@ -282,7 +282,7 @@ async function fetchLiveData() {
   return liveTrams.length > 0 ? liveTrams : null;
 }
 
-// ─── Tram markers management ──────────────────────────────────────────────────
+// ─── Tram state: smooth interpolation for both live and sim ──────────────────
 const tramIcon = L.divIcon({
   className: '',
   html: '<div class="tram-marker"></div>',
@@ -290,19 +290,46 @@ const tramIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
-function updateTramMarkers(tramData) {
-  // Remove old markers
-  liveMarkers.forEach(m => map.removeLayer(m));
-  liveMarkers = [];
+// Each tram has: current display pos, target pos, marker, metadata
+let tramState = []; // [{ lat, lon, targetLat, targetLon, towards, nextStop, marker }]
 
-  tramData.forEach(tram => {
-    const m = L.marker([tram.lat, tram.lon], { icon: tramIcon, zIndexOffset: 1000 })
-      .bindTooltip(`→ ${tram.nextStop}`, { direction: 'top', offset: [0, -12], opacity: 0.9 })
+function ensureMarkers(count) {
+  // Add markers if we need more
+  while (tramState.length < count) {
+    const m = L.marker([0, 0], { icon: tramIcon, zIndexOffset: 1000 })
+      .bindTooltip('', { direction: 'top', offset: [0, -12], opacity: 0.9 })
       .addTo(map);
-    liveMarkers.push(m);
-  });
+    tramState.push({ lat: 0, lon: 0, targetLat: 0, targetLon: 0, towards: '', nextStop: '', marker: m });
+  }
+  // Remove excess markers
+  while (tramState.length > count) {
+    const t = tramState.pop();
+    map.removeLayer(t.marker);
+  }
+}
 
+function setTargets(tramData) {
+  ensureMarkers(tramData.length);
+  tramData.forEach((d, i) => {
+    const t = tramState[i];
+    // If marker was at 0,0 (first placement), snap immediately
+    if (t.lat === 0 && t.lon === 0) { t.lat = d.lat; t.lon = d.lon; }
+    t.targetLat = d.lat;
+    t.targetLon = d.lon;
+    t.towards = d.towards;
+    t.nextStop = d.nextStop;
+  });
   document.getElementById('tram-count').textContent = tramData.length;
+}
+
+// Smoothly move displayed positions toward targets each frame
+function lerpMarkers(speed) {
+  tramState.forEach(t => {
+    t.lat += (t.targetLat - t.lat) * speed;
+    t.lon += (t.targetLon - t.lon) * speed;
+    t.marker.setLatLng([t.lat, t.lon]);
+    t.marker.setTooltipContent(`→ ${t.nextStop}`);
+  });
   document.getElementById('clock').textContent = 'Updated: ' + new Date().toLocaleTimeString();
 }
 
@@ -314,8 +341,8 @@ const simTrams = Array.from({ length: NUM_SIM_TRAMS }, (_, i) => ({
   dir: i % 2 === 0 ? 1 : -1,
 }));
 
-function getSimulatedPositions(dt) {
-  return simTrams.map((tram, i) => {
+function stepSimulation(dt) {
+  const data = simTrams.map(tram => {
     tram.dist += tram.dir * TRAM_SPEED * dt;
     if (tram.dist >= totalDist) { tram.dist = totalDist; tram.dir = -1; }
     if (tram.dist <= 0) { tram.dist = 0; tram.dir = 1; }
@@ -326,10 +353,11 @@ function getSimulatedPositions(dt) {
       nextStop: nearestStop(tram.dist + tram.dir * 300),
     };
   });
+  setTargets(data);
 }
 
-// ─── Main loop: try live, fall back to simulation ─────────────────────────────
-let lastAnimTime = null;
+// ─── Live data fetching ──────────────────────────────────────────────────────
+let isLive = false;
 
 async function pollLive() {
   try {
@@ -340,12 +368,12 @@ async function pollLive() {
         document.getElementById('mode-label').textContent = 'Live Tracking';
         document.getElementById('sim-badge').style.display = 'none';
       }
-      updateTramMarkers(data);
+      setTargets(data);
     } else {
       throw new Error('No trams in response');
     }
   } catch (e) {
-    if (isLive || !lastAnimTime) {
+    if (isLive) {
       isLive = false;
       document.getElementById('mode-label').textContent = 'Simulation Mode';
       document.getElementById('sim-badge').style.display = '';
@@ -353,20 +381,30 @@ async function pollLive() {
   }
 }
 
-function animateSim(timestamp) {
-  if (!isLive) {
-    if (!lastAnimTime) lastAnimTime = timestamp;
-    const dt = Math.min((timestamp - lastAnimTime) / 1000, 0.1);
-    lastAnimTime = timestamp;
-    updateTramMarkers(getSimulatedPositions(dt));
+// ─── Main animation loop (60fps) ─────────────────────────────────────────────
+let lastFrameTime = null;
+
+function animate(timestamp) {
+  if (!lastFrameTime) lastFrameTime = timestamp;
+  const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.1);
+  lastFrameTime = timestamp;
+
+  if (isLive) {
+    // Smooth lerp toward API targets — 0.08 per frame ≈ reaches target in ~0.5s
+    lerpMarkers(0.08);
+  } else {
+    // Simulation: advance positions then snap targets (sim is already smooth)
+    stepSimulation(dt);
+    lerpMarkers(1.0); // instant for sim since targets update every frame
   }
-  requestAnimationFrame(animateSim);
+
+  requestAnimationFrame(animate);
 }
 
-// Start: try live immediately, poll every 15s, run simulation in between
+// Start: try live, poll every 15s, animate at 60fps always
 pollLive();
 setInterval(pollLive, 15000);
-requestAnimationFrame(animateSim);
+requestAnimationFrame(animate);
 </script>
 </body>
 </html>
