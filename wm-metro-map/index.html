@@ -218,7 +218,6 @@ function cleanStationName(name) {
 
 // ─── Live data fetching ───────────────────────────────────────────────────────
 let isLive = false;
-let liveMarkers = [];
 
 async function fetchLiveData() {
   const res = await fetch('/api/arrivals');
@@ -245,19 +244,17 @@ async function fetchLiveData() {
       const arr = p.ExpectedArrival || p.ScheduledArrival;
       if (arr && new Date(arr).getTime() > now - 60000) { nextPred = p; break; }
     }
-    if (!nextPred) nextPred = preds[0]; // fallback to first
+    if (!nextPred) nextPred = preds[0];
 
     const stopName = cleanStationName(nextPred.StationName);
     const stopIdx = stopNameToIndex[stopName];
     if (stopIdx === undefined) continue;
 
-    // Previous stop depends on direction
     const isOutbound = nextPred.Direction === 'outbound';
     const prevIdx = isOutbound
       ? Math.max(0, stopIdx - 1)
       : Math.min(STOPS.length - 1, stopIdx + 1);
 
-    // Calculate how far along the segment the tram is
     let fraction = 0.5;
     const arrStr = nextPred.ExpectedArrival || nextPred.ScheduledArrival;
     if (arrStr && preds.length >= 2) {
@@ -272,6 +269,7 @@ async function fetchLiveData() {
     const from = STOPS[prevIdx];
     const to = STOPS[stopIdx];
     liveTrams.push({
+      id: id,
       lat: from.lat + fraction * (to.lat - from.lat),
       lon: from.lon + fraction * (to.lon - from.lon),
       towards: nextPred.Towards || nextPred.Direction,
@@ -308,10 +306,39 @@ function ensureMarkers(count) {
   }
 }
 
+// Map tram IDs to their tramState index for stable identity tracking
+const tramIdMap = new Map(); // id → index in tramState
+
 function setTargets(tramData) {
+  // Build set of current IDs
+  const incomingIds = new Set(tramData.map(d => d.id));
+
+  // Remove trams that are no longer in the data
+  for (const [id, idx] of [...tramIdMap.entries()]) {
+    if (!incomingIds.has(id)) {
+      tramIdMap.delete(id);
+    }
+  }
+
+  // Assign indices: reuse existing slots, allocate new ones as needed
+  const usedIndices = new Set(tramIdMap.values());
+  for (const d of tramData) {
+    if (!tramIdMap.has(d.id)) {
+      // Find first unused index, or use next available
+      let newIdx = 0;
+      while (usedIndices.has(newIdx)) newIdx++;
+      tramIdMap.set(d.id, newIdx);
+      usedIndices.add(newIdx);
+    }
+  }
+
   ensureMarkers(tramData.length);
-  tramData.forEach((d, i) => {
+
+  // Update targets by stable ID mapping
+  tramData.forEach(d => {
+    const i = tramIdMap.get(d.id);
     const t = tramState[i];
+    if (!t) return;
     // If marker was at 0,0 (first placement), snap immediately
     if (t.lat === 0 && t.lon === 0) { t.lat = d.lat; t.lon = d.lon; }
     t.targetLat = d.lat;
@@ -342,12 +369,13 @@ const simTrams = Array.from({ length: NUM_SIM_TRAMS }, (_, i) => ({
 }));
 
 function stepSimulation(dt) {
-  const data = simTrams.map(tram => {
+  const data = simTrams.map((tram, i) => {
     tram.dist += tram.dir * TRAM_SPEED * dt;
     if (tram.dist >= totalDist) { tram.dist = totalDist; tram.dir = -1; }
     if (tram.dist <= 0) { tram.dist = 0; tram.dir = 1; }
     const pos = posAtDist(tram.dist);
     return {
+      id: `sim-${i}`,
       lat: pos.lat, lon: pos.lon,
       towards: tram.dir > 0 ? 'Wolverhampton' : 'Edgbaston Village',
       nextStop: nearestStop(tram.dist + tram.dir * 300),
@@ -355,9 +383,6 @@ function stepSimulation(dt) {
   });
   setTargets(data);
 }
-
-// ─── Live data fetching ──────────────────────────────────────────────────────
-let isLive = false;
 
 async function pollLive() {
   try {
@@ -373,11 +398,10 @@ async function pollLive() {
       throw new Error('No trams in response');
     }
   } catch (e) {
-    if (isLive) {
-      isLive = false;
-      document.getElementById('mode-label').textContent = 'Simulation Mode';
-      document.getElementById('sim-badge').style.display = '';
-    }
+    // Always fall back to simulation when live data unavailable
+    isLive = false;
+    document.getElementById('mode-label').textContent = 'Simulation Mode';
+    document.getElementById('sim-badge').style.display = '';
   }
 }
 
