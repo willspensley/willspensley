@@ -129,6 +129,117 @@
     .tram-popup .popup-dest { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
     .tram-popup .popup-row { color: #aaa; font-size: 12px; margin: 2px 0; }
     .tram-popup .popup-row span { color: #fff; }
+
+    /* Journey planner button */
+    #plan-btn {
+      position: absolute; top: 16px; right: 16px; z-index: 1000;
+      background: #00a0dc; color: #fff; border: none; border-radius: 8px;
+      padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 2px 12px rgba(0,160,220,0.3);
+      transition: background 0.2s;
+    }
+    #plan-btn:hover { background: #0090c5; }
+    #plan-btn svg { width: 16px; height: 16px; }
+
+    /* Journey planner panel */
+    #journey-panel {
+      position: absolute; top: 0; right: -400px; z-index: 1002;
+      width: 380px; height: 100%; background: rgba(10,10,30,0.95);
+      border-left: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px); color: #fff;
+      transition: right 0.3s ease; overflow-y: auto;
+      font-size: 13px;
+    }
+    #journey-panel.open { right: 0; }
+    #journey-panel .jp-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    #journey-panel .jp-header h2 { font-size: 17px; font-weight: 700; margin: 0; }
+    #journey-panel .close-btn {
+      background: none; border: none; color: #888; font-size: 22px;
+      cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+    #journey-panel .close-btn:hover { color: #fff; }
+    #journey-panel .jp-form { padding: 16px; }
+    #journey-panel .jp-field { margin-bottom: 12px; }
+    #journey-panel .jp-field label {
+      display: block; font-size: 10px; color: #888; text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 5px; font-weight: 600;
+    }
+    #journey-panel .jp-field select {
+      width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+      color: #fff; font-size: 14px; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+    }
+    #journey-panel .jp-field select:focus { outline: none; border-color: #00a0dc; }
+    #journey-panel .jp-swap {
+      display: flex; justify-content: center; margin: -4px 0 8px;
+    }
+    #journey-panel .jp-swap button {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 50%; width: 32px; height: 32px; color: #888; cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    #journey-panel .jp-swap button:hover { color: #fff; border-color: #00a0dc; }
+    #journey-panel .jp-go {
+      width: 100%; padding: 12px; background: #00a0dc; color: #fff; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+      margin-top: 4px; transition: background 0.2s;
+    }
+    #journey-panel .jp-go:hover { background: #0090c5; }
+    #journey-panel .jp-results { padding: 0 16px 16px; }
+    .jp-summary {
+      background: rgba(255,184,0,0.08); border: 1px solid rgba(255,184,0,0.2);
+      border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .jp-summary .jp-time { font-size: 28px; font-weight: 700; color: #ffb800; }
+    .jp-summary .jp-meta { font-size: 12px; color: #aaa; margin-top: 4px; }
+    .jp-section-label {
+      font-size: 10px; color: #666; text-transform: uppercase;
+      letter-spacing: 1px; margin: 16px 0 8px; font-weight: 600;
+    }
+    .jp-stop-list { list-style: none; padding: 0; margin: 0; }
+    .jp-stop-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 6px 0; position: relative;
+    }
+    .jp-stop-item .jp-line {
+      width: 3px; min-height: 100%; background: #ffb800;
+      position: absolute; left: 5px; top: 0; bottom: 0;
+    }
+    .jp-stop-item:first-child .jp-line { top: 50%; }
+    .jp-stop-item:last-child .jp-line { bottom: 50%; height: 50%; }
+    .jp-stop-dot {
+      width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+      border: 2.5px solid #ffb800; background: #1a1a2e; z-index: 1;
+      margin-top: 2px;
+    }
+    .jp-stop-item.jp-origin .jp-stop-dot,
+    .jp-stop-item.jp-dest .jp-stop-dot {
+      background: #ffb800;
+    }
+    .jp-stop-name { font-size: 13px; }
+    .jp-stop-item.jp-origin .jp-stop-name,
+    .jp-stop-item.jp-dest .jp-stop-name { font-weight: 600; }
+    .jp-stop-item.jp-intermediate .jp-stop-name { color: #888; font-size: 12px; }
+    .jp-departures { margin-top: 4px; }
+    .jp-dep-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .jp-dep-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #00a0dc;
+      flex-shrink: 0;
+    }
+    .jp-dep-dot.live { background: #00e676; }
+    .jp-dep-info { flex: 1; font-size: 12px; color: #aaa; }
+    .jp-dep-info span { color: #fff; }
+    .jp-dep-time { font-size: 14px; font-weight: 700; color: #ffb800; }
   </style>
 </head>
 <body>
@@ -144,6 +255,33 @@
   </div>
   <div class="updated" id="clock">--:--:--</div>
   <div class="sim-badge" id="sim-badge" style="display:none">Simulated</div>
+</div>
+
+<button id="plan-btn" onclick="toggleJourneyPanel()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M5 8v2a4 4 0 004 4h6a4 4 0 004-4V8"/></svg>
+  Plan Journey
+</button>
+
+<div id="journey-panel">
+  <div class="jp-header">
+    <h2>Journey Planner</h2>
+    <button class="close-btn" onclick="closeJourneyPanel()">&times;</button>
+  </div>
+  <div class="jp-form">
+    <div class="jp-field">
+      <label>From</label>
+      <select id="jp-from"></select>
+    </div>
+    <div class="jp-swap">
+      <button onclick="swapStops()" title="Swap direction">&#8645;</button>
+    </div>
+    <div class="jp-field">
+      <label>To</label>
+      <select id="jp-to"></select>
+    </div>
+    <button class="jp-go" onclick="planJourney()">Plan Journey</button>
+  </div>
+  <div class="jp-results" id="jp-results"></div>
 </div>
 
 <div id="stop-panel">
@@ -304,6 +442,7 @@ async function fetchLiveData() {
   const data = await res.json();
   const predictions = data?.ArrayOfPrediction?.Prediction;
   if (!predictions || !Array.isArray(predictions)) return null;
+  lastLiveArrivals = predictions; // store for journey planner
 
   // Group by Id (each Id = one tram journey)
   const groups = {};
@@ -588,6 +727,156 @@ function updateStopPanel() {
 
 // Refresh stop panel every second
 setInterval(updateStopPanel, 1000);
+
+// ─── Journey planner ─────────────────────────────────────────────────────────
+// Populate dropdowns
+(function populateJPSelects() {
+  const fromSel = document.getElementById('jp-from');
+  const toSel = document.getElementById('jp-to');
+  STOPS.forEach((s, i) => {
+    fromSel.add(new Option(s.name, i));
+    toSel.add(new Option(s.name, i));
+  });
+  toSel.value = STOPS.length - 1; // default: Wolverhampton Station
+})();
+
+let journeyHighlight = null; // polyline layer for highlighted route segment
+
+function toggleJourneyPanel() {
+  const panel = document.getElementById('journey-panel');
+  panel.classList.toggle('open');
+  if (!panel.classList.contains('open') && journeyHighlight) {
+    map.removeLayer(journeyHighlight);
+    journeyHighlight = null;
+  }
+}
+function closeJourneyPanel() {
+  document.getElementById('journey-panel').classList.remove('open');
+  if (journeyHighlight) { map.removeLayer(journeyHighlight); journeyHighlight = null; }
+}
+function swapStops() {
+  const f = document.getElementById('jp-from');
+  const t = document.getElementById('jp-to');
+  const tmp = f.value; f.value = t.value; t.value = tmp;
+}
+
+// Average tram speed ~25 km/h, average dwell at each stop ~30s
+const AVG_SPEED_MS = 25000 / 3600; // metres per second
+const DWELL_PER_STOP = 30; // seconds
+
+// WM Metro approximate service frequency
+function getServiceFrequency() {
+  const h = new Date().getHours();
+  const day = new Date().getDay();
+  if (day === 0) return 15; // Sunday
+  if (day === 6) return 10; // Saturday
+  if (h >= 7 && h <= 9) return 6;   // AM peak
+  if (h >= 16 && h <= 18) return 6;  // PM peak
+  if (h >= 6 && h <= 23) return 8;   // off-peak daytime
+  return 15; // early morning / late night
+}
+
+// Store last live arrivals data for journey planner
+let lastLiveArrivals = null;
+
+function planJourney() {
+  const fromIdx = parseInt(document.getElementById('jp-from').value);
+  const toIdx = parseInt(document.getElementById('jp-to').value);
+  if (fromIdx === toIdx) {
+    document.getElementById('jp-results').innerHTML =
+      '<div style="color:#888;text-align:center;padding:20px;">Please select different stops.</div>';
+    return;
+  }
+
+  const direction = toIdx > fromIdx ? 1 : -1;
+  const minI = Math.min(fromIdx, toIdx);
+  const maxI = Math.max(fromIdx, toIdx);
+  const numStops = maxI - minI;
+
+  // Distance between the two stops
+  const dist = Math.abs(cumDist[toIdx] - cumDist[fromIdx]);
+  const travelSec = dist / AVG_SPEED_MS + (numStops - 1) * DWELL_PER_STOP;
+  const travelMin = Math.round(travelSec / 60);
+
+  // Highlight route segment on map
+  if (journeyHighlight) map.removeLayer(journeyHighlight);
+  const segCoords = [];
+  for (let i = minI; i <= maxI; i++) segCoords.push([STOPS[i].lat, STOPS[i].lon]);
+  journeyHighlight = L.polyline(segCoords, {
+    color: '#00e676', weight: 6, opacity: 0.8, lineJoin: 'round', lineCap: 'round',
+  }).addTo(map);
+
+  // Fit map to the journey segment
+  map.fitBounds(journeyHighlight.getBounds(), { padding: [60, 60] });
+
+  // Build stop list
+  const stopsList = [];
+  for (let i = minI; i <= maxI; i++) {
+    const type = i === fromIdx ? 'jp-origin' : i === toIdx ? 'jp-dest' : 'jp-intermediate';
+    stopsList.push(`<li class="jp-stop-item ${type}">
+      <div class="jp-line"></div>
+      <div class="jp-stop-dot"></div>
+      <div class="jp-stop-name">${STOPS[i].name}</div>
+    </li>`);
+  }
+
+  // Build projected departures from origin
+  const freq = getServiceFrequency();
+  const now = new Date();
+  const departures = [];
+  for (let d = 0; d < 5; d++) {
+    const depTime = new Date(now.getTime() + d * freq * 60000);
+    const arrTime = new Date(depTime.getTime() + travelSec * 1000);
+    const depStr = depTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const arrStr = arrTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const minsAway = d * freq;
+    const label = minsAway === 0 ? 'Due now' : `in ${minsAway} min`;
+    departures.push({ depStr, arrStr, label, isLive: false });
+  }
+
+  // If live, check for trams heading toward destination that pass through origin
+  let liveSection = '';
+  if (isLive && lastLiveArrivals) {
+    const liveForOrigin = lastLiveArrivals.filter(p => {
+      const sn = cleanStationName(p.StationName);
+      return sn === STOPS[fromIdx].name;
+    });
+    if (liveForOrigin.length > 0) {
+      liveSection = '<div class="jp-section-label">Live departures</div>';
+      liveForOrigin.slice(0, 3).forEach(p => {
+        const arr = p.ExpectedArrival || p.ScheduledArrival;
+        if (!arr) return;
+        const t = new Date(arr);
+        const minsUntil = Math.max(0, Math.round((t - now) / 60000));
+        const timeStr = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dest = p.Towards || p.Direction;
+        liveSection += `<div class="jp-dep-row">
+          <div class="jp-dep-dot live"></div>
+          <div class="jp-dep-info"><span>${dest}</span> at ${timeStr}</div>
+          <div class="jp-dep-time">${minsUntil < 1 ? 'Due' : minsUntil + ' min'}</div>
+        </div>`;
+      });
+    }
+  }
+
+  const destName = direction > 0 ? 'Wolverhampton' : 'Edgbaston Village';
+  const html = `
+    <div class="jp-summary">
+      <div class="jp-time">${travelMin} min</div>
+      <div class="jp-meta">${numStops} stop${numStops > 1 ? 's' : ''} &middot; ${(dist/1000).toFixed(1)} km &middot; towards ${destName}</div>
+    </div>
+    ${liveSection}
+    <div class="jp-section-label">Projected departures (every ~${freq} min)</div>
+    ${departures.map(d => `<div class="jp-dep-row">
+      <div class="jp-dep-dot"></div>
+      <div class="jp-dep-info">Depart <span>${d.depStr}</span> &rarr; Arrive <span>${d.arrStr}</span></div>
+      <div class="jp-dep-time">${d.label}</div>
+    </div>`).join('')}
+    <div class="jp-section-label">Your route</div>
+    <ul class="jp-stop-list">${stopsList.join('')}</ul>
+  `;
+  document.getElementById('jp-results').innerHTML = html;
+}
 
 // ─── Main animation loop (60fps) ─────────────────────────────────────────────
 let lastFrameTime = null;
