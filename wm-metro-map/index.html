@@ -66,13 +66,13 @@
 
 <div id="overlay">
   <h1>West Midlands Metro</h1>
-  <div class="sub">Simulation Mode</div>
+  <div class="sub" id="mode-label">Connecting...</div>
   <div class="stat">
     <div class="dot"></div>
     <span><span id="tram-count">6</span> trams running</span>
   </div>
   <div class="updated" id="clock">--:--:--</div>
-  <div class="sim-badge">Simulated</div>
+  <div class="sim-badge" id="sim-badge" style="display:none">Simulated</div>
 </div>
 
 <div id="legend">
@@ -208,17 +208,81 @@ allStops.forEach(stop => {
     .addTo(map);
 });
 
-// ─── Tram simulation ──────────────────────────────────────────────────────────
-const TRAM_SPEED = 15; // m/s ≈ 54 km/h (tram average with stops)
-const NUM_TRAMS = 6;
+// ─── Stop name lookup ─────────────────────────────────────────────────────────
+const stopNameToIndex = {};
+STOPS.forEach((s, i) => { stopNameToIndex[s.name] = i; });
 
-const trams = Array.from({ length: NUM_TRAMS }, (_, i) => ({
-  dist: (totalDist / NUM_TRAMS) * i,
-  dir: i % 2 === 0 ? 1 : -1,  // alternate directions for realism
-  marker: null,
-}));
+function cleanStationName(name) {
+  return name.replace(/\s*\(West Midlands Metro\)\s*$/, '').replace(/\s+Outer Circle$/, '');
+}
 
-// Create tram markers
+// ─── Live data fetching ───────────────────────────────────────────────────────
+let isLive = false;
+let liveMarkers = [];
+
+async function fetchLiveData() {
+  const res = await fetch('/api/arrivals');
+  const data = await res.json();
+  const predictions = data?.ArrayOfPrediction?.Prediction;
+  if (!predictions || !Array.isArray(predictions)) return null;
+
+  // Group by Id (each Id = one tram journey)
+  const groups = {};
+  for (const p of predictions) {
+    if (!groups[p.Id]) groups[p.Id] = [];
+    groups[p.Id].push(p);
+  }
+
+  const now = Date.now();
+  const liveTrams = [];
+
+  for (const [id, preds] of Object.entries(groups)) {
+    preds.sort((a, b) => parseInt(a.StopSequence) - parseInt(b.StopSequence));
+
+    // Find the next stop with a known arrival time
+    let nextPred = null;
+    for (const p of preds) {
+      const arr = p.ExpectedArrival || p.ScheduledArrival;
+      if (arr && new Date(arr).getTime() > now - 60000) { nextPred = p; break; }
+    }
+    if (!nextPred) nextPred = preds[0]; // fallback to first
+
+    const stopName = cleanStationName(nextPred.StationName);
+    const stopIdx = stopNameToIndex[stopName];
+    if (stopIdx === undefined) continue;
+
+    // Previous stop depends on direction
+    const isOutbound = nextPred.Direction === 'outbound';
+    const prevIdx = isOutbound
+      ? Math.max(0, stopIdx - 1)
+      : Math.min(STOPS.length - 1, stopIdx + 1);
+
+    // Calculate how far along the segment the tram is
+    let fraction = 0.5;
+    const arrStr = nextPred.ExpectedArrival || nextPred.ScheduledArrival;
+    if (arrStr && preds.length >= 2) {
+      const timeToNext = (new Date(arrStr).getTime() - now) / 1000;
+      const arr2 = preds[1].ExpectedArrival || preds[1].ScheduledArrival;
+      if (arr2) {
+        const segTime = Math.abs(new Date(arr2).getTime() - new Date(arrStr).getTime()) / 1000;
+        if (segTime > 0) fraction = Math.max(0, Math.min(1, 1 - timeToNext / segTime));
+      }
+    }
+
+    const from = STOPS[prevIdx];
+    const to = STOPS[stopIdx];
+    liveTrams.push({
+      lat: from.lat + fraction * (to.lat - from.lat),
+      lon: from.lon + fraction * (to.lon - from.lon),
+      towards: nextPred.Towards || nextPred.Direction,
+      nextStop: stopName,
+    });
+  }
+
+  return liveTrams.length > 0 ? liveTrams : null;
+}
+
+// ─── Tram markers management ──────────────────────────────────────────────────
 const tramIcon = L.divIcon({
   className: '',
   html: '<div class="tram-marker"></div>',
@@ -226,45 +290,83 @@ const tramIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
-trams.forEach(tram => {
-  const pos = posAtDist(tram.dist);
-  tram.marker = L.marker([pos.lat, pos.lon], {
-    icon: tramIcon,
-    zIndexOffset: 1000,
-  })
-    .bindTooltip('', { direction: 'top', offset: [0, -12], opacity: 0.9 })
-    .addTo(map);
-});
+function updateTramMarkers(tramData) {
+  // Remove old markers
+  liveMarkers.forEach(m => map.removeLayer(m));
+  liveMarkers = [];
 
-// ─── Animation loop ───────────────────────────────────────────────────────────
-let lastTime = null;
-
-function animate(timestamp) {
-  if (!lastTime) lastTime = timestamp;
-  const dt = Math.min((timestamp - lastTime) / 1000, 0.1); // seconds, capped at 100ms
-  lastTime = timestamp;
-
-  trams.forEach((tram, i) => {
-    tram.dist += tram.dir * TRAM_SPEED * dt;
-
-    // Bounce at ends
-    if (tram.dist >= totalDist) { tram.dist = totalDist; tram.dir = -1; }
-    if (tram.dist <= 0)          { tram.dist = 0;          tram.dir = 1; }
-
-    const pos = posAtDist(tram.dist);
-    tram.marker.setLatLng([pos.lat, pos.lon]);
-    const next = nearestStop(tram.dist + tram.dir * 300);
-    tram.marker.setTooltipContent(`Tram ${i + 1} → ${next}`);
+  tramData.forEach(tram => {
+    const m = L.marker([tram.lat, tram.lon], { icon: tramIcon, zIndexOffset: 1000 })
+      .bindTooltip(`→ ${tram.nextStop}`, { direction: 'top', offset: [0, -12], opacity: 0.9 })
+      .addTo(map);
+    liveMarkers.push(m);
   });
 
-  // Update clock
-  document.getElementById('clock').textContent =
-    'Updated: ' + new Date().toLocaleTimeString();
-
-  requestAnimationFrame(animate);
+  document.getElementById('tram-count').textContent = tramData.length;
+  document.getElementById('clock').textContent = 'Updated: ' + new Date().toLocaleTimeString();
 }
 
-requestAnimationFrame(animate);
+// ─── Simulation fallback ──────────────────────────────────────────────────────
+const TRAM_SPEED = 15;
+const NUM_SIM_TRAMS = 6;
+const simTrams = Array.from({ length: NUM_SIM_TRAMS }, (_, i) => ({
+  dist: (totalDist / NUM_SIM_TRAMS) * i,
+  dir: i % 2 === 0 ? 1 : -1,
+}));
+
+function getSimulatedPositions(dt) {
+  return simTrams.map((tram, i) => {
+    tram.dist += tram.dir * TRAM_SPEED * dt;
+    if (tram.dist >= totalDist) { tram.dist = totalDist; tram.dir = -1; }
+    if (tram.dist <= 0) { tram.dist = 0; tram.dir = 1; }
+    const pos = posAtDist(tram.dist);
+    return {
+      lat: pos.lat, lon: pos.lon,
+      towards: tram.dir > 0 ? 'Wolverhampton' : 'Edgbaston Village',
+      nextStop: nearestStop(tram.dist + tram.dir * 300),
+    };
+  });
+}
+
+// ─── Main loop: try live, fall back to simulation ─────────────────────────────
+let lastAnimTime = null;
+
+async function pollLive() {
+  try {
+    const data = await fetchLiveData();
+    if (data) {
+      if (!isLive) {
+        isLive = true;
+        document.getElementById('mode-label').textContent = 'Live Tracking';
+        document.getElementById('sim-badge').style.display = 'none';
+      }
+      updateTramMarkers(data);
+    } else {
+      throw new Error('No trams in response');
+    }
+  } catch (e) {
+    if (isLive || !lastAnimTime) {
+      isLive = false;
+      document.getElementById('mode-label').textContent = 'Simulation Mode';
+      document.getElementById('sim-badge').style.display = '';
+    }
+  }
+}
+
+function animateSim(timestamp) {
+  if (!isLive) {
+    if (!lastAnimTime) lastAnimTime = timestamp;
+    const dt = Math.min((timestamp - lastAnimTime) / 1000, 0.1);
+    lastAnimTime = timestamp;
+    updateTramMarkers(getSimulatedPositions(dt));
+  }
+  requestAnimationFrame(animateSim);
+}
+
+// Start: try live immediately, poll every 15s, run simulation in between
+pollLive();
+setInterval(pollLive, 15000);
+requestAnimationFrame(animateSim);
 </script>
 </body>
 </html>
