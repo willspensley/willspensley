@@ -250,8 +250,6 @@ function nearestStop(d) {
 }
 
 // ─── Map initialisation ───────────────────────────────────────────────────────
-const MAPTILER_KEY = 'FXaZMCVlJ0FwgtPRY0Hp';
-
 const map = L.map('map', {
   center: [52.53, -2.01],
   zoom: 11,
@@ -260,11 +258,11 @@ const map = L.map('map', {
 });
 
 L.tileLayer(
-  `https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   {
-    tileSize: 256,
-    attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; OpenStreetMap contributors',
-    maxZoom: 18,
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    subdomains: 'abcd',
   }
 ).addTo(map);
 
